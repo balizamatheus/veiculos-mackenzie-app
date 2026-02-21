@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Veículos</string>
+    <string name="title_activity_main">Veículos</string>
+    <string name="package_name">com.veiculos.app</string>
+    <string name="custom_url_scheme">com.veiculos.app</string>
+</resources>

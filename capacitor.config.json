@@ -1,0 +1,11 @@
+{
+  "appId": "com.veiculos.app",
+  "appName": "Veículos",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": true,
+      "updateUrl": "https://api.github.com/repos/SEU-USUARIO/veiculos-app/releases/latest"
+    }
+  }
+}
