@@ -5,7 +5,7 @@
   "plugins": {
     "CapacitorUpdater": {
       "autoUpdate": true,
-      "updateUrl": "https://api.github.com/repos/SEU-USUARIO/veiculos-app/releases/latest"
+      "updateUrl": "https://api.github.com/repos/balizamatheus/veiculos-mackenzie-app/releases/latest"
     }
   }
 }

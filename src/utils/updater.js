@@ -2,7 +2,7 @@ import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
 
 // Configuração - substitua pelo seu usuário/repositório
-const GITHUB_REPO = 'SEU-USUARIO/veiculos-app';
+const GITHUB_REPO = 'balizamatheus/veiculos-mackenzie-app';
 
 /**
  * Verifica e aplica atualizações automaticamente
