@@ -1,12 +1,13 @@
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 // Configuração - substitua pelo seu usuário/repositório
 const GITHUB_REPO = 'balizamatheus/veiculos-mackenzie-app';
 
 // Token de acesso pessoal do GitHub (permissões mínimas: apenas ler releases)
 // IMPORTANTE: Crie seu token em https://github.com/settings/tokens
-// Permissões necessárias: repo (para repositório privado) ou public_repo (para público)
+// Permissões necessárias: repo (para repositório privado)
 const GITHUB_TOKEN = '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';
 
 /**
@@ -52,9 +53,43 @@ export async function initUpdater() {
       if (zipAsset) {
         console.log(`Updater: Baixando ${zipAsset.name}...`);
         
-        // Baixar e aplicar atualização
+        // Baixar o arquivo com autenticação
+        const zipResponse = await fetch(zipAsset.url, {
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/octet-stream',
+            'User-Agent': 'Veiculos-App'
+          }
+        });
+        
+        if (!zipResponse.ok) {
+          console.log(`Updater: Erro ao baixar ZIP: ${zipResponse.status}`);
+          return;
+        }
+        
+        // Converter para blob e depois para base64
+        const blob = await zipResponse.blob();
+        const base64 = await blobToBase64(blob);
+        
+        // Salvar arquivo temporariamente
+        const fileName = `update-${latestVersion}.zip`;
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Cache
+        });
+        
+        // Obter caminho do arquivo
+        const fileUri = await Filesystem.getUri({
+          path: fileName,
+          directory: Directory.Cache
+        });
+        
+        console.log(`Updater: Arquivo salvo em ${fileUri.uri}`);
+        
+        // Baixar e aplicar atualização usando o arquivo local
         const downloaded = await CapacitorUpdater.download({
-          url: zipAsset.browser_download_url,
+          url: fileUri.uri,
           version: latestVersion
         });
         
@@ -71,6 +106,22 @@ export async function initUpdater() {
   } catch (error) {
     console.error('Updater: Erro ao verificar atualização', error);
   }
+}
+
+/**
+ * Converte Blob para Base64
+ */
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // Remover o prefixo "data:application/zip;base64,"
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 /**
