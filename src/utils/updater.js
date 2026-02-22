@@ -4,6 +4,11 @@ import { Capacitor } from '@capacitor/core';
 // Configuração - substitua pelo seu usuário/repositório
 const GITHUB_REPO = 'balizamatheus/veiculos-mackenzie-app';
 
+// Token de acesso pessoal do GitHub (permissões mínimas: apenas ler releases)
+// IMPORTANTE: Crie seu token em https://github.com/settings/tokens
+// Permissões necessárias: repo (para repositório privado) ou public_repo (para público)
+const GITHUB_TOKEN = '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';
+
 /**
  * Verifica e aplica atualizações automaticamente
  * Deve ser chamado no início do app
@@ -16,11 +21,17 @@ export async function initUpdater() {
   }
 
   try {
-    // Buscar última release do GitHub
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+    // Buscar última release do GitHub com autenticação
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Veiculos-App'
+      }
+    });
     
     if (!response.ok) {
-      console.log('Updater: Nenhuma release encontrada');
+      console.log(`Updater: Erro ao buscar release: ${response.status}`);
       return;
     }
     
@@ -30,6 +41,8 @@ export async function initUpdater() {
     // Verificar versão atual
     const currentVersion = await getCurrentVersion();
     
+    console.log(`Updater: Versão atual: ${currentVersion}, Versão disponível: ${latestVersion}`);
+    
     if (isNewerVersion(latestVersion, currentVersion)) {
       console.log(`Updater: Nova versão ${latestVersion} disponível`);
       
@@ -37,6 +50,8 @@ export async function initUpdater() {
       const zipAsset = release.assets.find(asset => asset.name.endsWith('.zip'));
       
       if (zipAsset) {
+        console.log(`Updater: Baixando ${zipAsset.name}...`);
+        
         // Baixar e aplicar atualização
         const downloaded = await CapacitorUpdater.download({
           url: zipAsset.browser_download_url,
@@ -47,6 +62,8 @@ export async function initUpdater() {
         await CapacitorUpdater.set({ id: downloaded.id });
         
         console.log('Updater: Atualização aplicada com sucesso');
+      } else {
+        console.log('Updater: Nenhum arquivo ZIP encontrado na release');
       }
     } else {
       console.log('Updater: App já está na versão mais recente');
@@ -65,7 +82,13 @@ export async function checkForUpdate() {
   }
   
   try {
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Veiculos-App'
+      }
+    });
     
     if (!response.ok) {
       return { available: false };

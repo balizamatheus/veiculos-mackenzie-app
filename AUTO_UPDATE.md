@@ -1,149 +1,110 @@
-# Sistema de Atualizações Automáticas (GitHub Releases)
+# Sistema de Atualizações Automáticas (Repositório Privado)
 
-Este projeto está configurado com **Capacitor Updater** + **GitHub Releases** para permitir atualizações automáticas com repositório privado.
+Este projeto está configurado com **Capacitor Updater** + **GitHub Releases** + **Personal Access Token** para permitir atualizações automáticas com repositório privado.
 
-## Vantagens
+## Configuração do Token
 
-- ✅ **Repositório privado** - Código e dados não ficam públicos
-- ✅ **Atualização automática** - Usuários recebem atualizações sem novo APK
-- ✅ **Gratuito** - GitHub Releases é gratuito para repositórios privados
-- ✅ **Simples** - Basta fazer push e o GitHub cria a release automaticamente
+### 1. Criar Personal Access Token no GitHub
 
-## Configuração Inicial
+1. Acesse: https://github.com/settings/tokens
+2. Clique em **"Generate new token"** → **"Generate new token (classic)"**
+3. Configure:
+   - **Note:** `Veiculos App Updater`
+   - **Expiration:** `No expiration` (ou o tempo que preferir)
+   - **Scopes:** Marque apenas `repo` (para repositório privado)
+4. Clique em **"Generate token"**
+5. **COPIE O TOKEN** (só aparece uma vez!)
 
-### 1. Criar repositório privado no GitHub
+### 2. Adicionar o Token no Código
 
-1. Acesse https://github.com/new
-2. Crie um repositório **privado** chamado `veiculos-app`
-3. Anote seu nome de usuário do GitHub
+Edite o arquivo [`src/utils/updater.js`](src/utils/updater.js) e substitua `SEU_TOKEN_AQUI` pelo seu token:
 
-### 2. Atualizar configuração
-
-Edite os arquivos abaixo substituindo `SEU-USUARIO` pelo seu nome de usuário:
-
-**[`capacitor.config.json`](capacitor.config.json):**
-```json
-"updateUrl": "https://api.github.com/repos/SEU-USUARIO/veiculos-app/releases/latest"
-```
-
-**[`src/utils/updater.js`](src/utils/updater.js):**
 ```javascript
-const GITHUB_REPO = 'SEU-USUARIO/veiculos-app';
+const GITHUB_TOKEN = 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 ```
 
-### 3. Subir o projeto para o GitHub
+### 3. Build e Deploy
 
 ```bash
-git init
-git add .
-git commit -m "Primeiro commit"
-git branch -M main
-git remote add origin https://github.com/SEU-USUARIO/veiculos-app.git
-git push -u origin main
+npm run android
 ```
 
-## Como Atualizar os Dados
+Depois gere o APK no Android Studio.
 
-### Método Automático (Recomendado)
+---
+
+## Como Funciona
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  App no Celular                                              │
+│                                                              │
+│  1. Faz requisição para GitHub API                          │
+│  2. Inclui token de autenticação                            │
+│  3. GitHub retorna dados da release                         │
+│  4. App baixa e aplica atualização                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Segurança
+
+### O que o token permite:
+- ✅ Ler releases do repositório
+- ✅ Baixar arquivos das releases
+
+### O que o token NÃO permite:
+- ❌ Modificar código
+- ❌ Criar releases
+- ❌ Alterar configurações
+
+### Aviso importante:
+O token fica embutido no APK. Qualquer pessoa com conhecimento técnico pode extrair o token do APK. Isso oferece proteção contra acesso casual, mas não contra atacantes determinados.
+
+---
+
+## Fluxo de Atualização
+
+### Quando você quiser atualizar:
 
 1. **Atualize o arquivo** `public/dados.xlsx`
 2. **Atualize a versão** no `package.json`:
    ```json
-   "version": "1.0.1"  // Incremente a versão
+   "version": "1.0.3"  // Incremente a versão
    ```
 3. **Faça commit e push:**
    ```bash
    git add .
-   git commit -m "Atualizar dados para v1.0.1"
+   git commit -m "Atualizar dados para v1.0.3"
    git push
    ```
 
-O **GitHub Actions** criará automaticamente uma Release com o arquivo de atualização!
+4. O GitHub Actions criará automaticamente uma Release
+5. Os usuários receberão a atualização automaticamente
 
-### Método Manual
+---
 
-1. Faça o build: `npm run build`
-2. Crie o ZIP: `cd dist && zip -r ../dist-v1.0.1.zip .`
-3. Vá no GitHub → Releases → Draft a new release
-4. Anexe o ZIP e publique
+## Troubleshooting
 
-## Fluxo de Atualização
+### Erro 401 (Unauthorized)
+- Verifique se o token está correto
+- Verifique se o token tem permissão `repo`
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Seu Computador                                              │
-│                                                              │
-│  1. Edita public/dados.xlsx                                 │
-│  2. Atualiza versão no package.json                         │
-│  3. git push                                                 │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  GitHub (Repositório Privado)                                │
-│                                                              │
-│  1. GitHub Actions faz build                                │
-│  2. Cria ZIP do dist                                        │
-│  3. Cria Release com o ZIP anexado                          │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Celular do Usuário                                          │
-│                                                              │
-│  1. App verifica última release no GitHub                   │
-│  2. Compara versões                                         │
-│  3. Se nova versão → baixa e aplica automaticamente         │
-└─────────────────────────────────────────────────────────────┘
-```
+### Erro 404 (Not Found)
+- Verifique se o nome do repositório está correto
+- Verifique se a release existe
 
-## Versionamento
+### App não atualiza
+- Verifique os logs no Logcat (filtre por "Updater")
+- Verifique se a versão da release é maior que a do app
 
-A versão é definida no [`package.json`](package.json):
-
-- `1.0.0` → `1.0.1` (pequenas correções/atualizações de dados)
-- `1.0.0` → `1.1.0` (novas funcionalidades)
-- `1.0.0` → `2.0.0` (mudanças grandes)
-
-**Importante:** Sempre incremente a versão para que o app detecte a atualização!
+---
 
 ## Arquivos do Sistema
 
 | Arquivo | Descrição |
 |---------|-----------|
-| [`src/utils/updater.js`](src/utils/updater.js) | Verifica e aplica atualizações |
+| [`src/utils/updater.js`](src/utils/updater.js) | Código de atualização com token |
 | [`.github/workflows/create-release.yml`](.github/workflows/create-release.yml) | Cria releases automaticamente |
-| [`capacitor.config.json`](capacitor.config.json) | Configuração do updater |
-
-## Testando
-
-1. Instale o APK no celular
-2. Faça uma alteração no `dados.xlsx`
-3. Incremente a versão no `package.json`
-4. Faça push para o GitHub
-5. Aguarde o GitHub Actions criar a release
-6. Abra o app no celular - ele deve atualizar automaticamente
-
-## Troubleshooting
-
-### Atualização não funciona
-
-1. Verifique se o `GITHUB_REPO` em [`src/utils/updater.js`](src/utils/updater.js) está correto
-2. Verifique se a release foi criada no GitHub
-3. Verifique se a versão da release é maior que a do app
-
-### Erro de download
-
-- Verifique se o arquivo ZIP está anexado à release
-- Verifique se o repositório é acessível
-
-### App não verifica atualizações
-
-- Verifique se o `initUpdater()` está sendo chamado no [`src/App.jsx`](src/App.jsx)
-- Verifique se o dispositivo tem conexão com internet
-
-## Segurança
-
-- O repositório é **privado**, então o código não é público
-- As releases são acessíveis, mas requerem conhecimento do repositório
-- Para maior segurança, considere adicionar autenticação no futuro
+| [`capacitor.config.json`](capacitor.config.json) | Configuração do Capacitor |
