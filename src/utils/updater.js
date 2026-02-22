@@ -25,7 +25,7 @@ export async function initUpdater() {
     // Buscar última release do GitHub com autenticação
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers: {
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Authorization': `token ${GITHUB_TOKEN}`,
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'Veiculos-App'
       }
@@ -52,23 +52,29 @@ export async function initUpdater() {
       
       if (zipAsset) {
         console.log(`Updater: Baixando ${zipAsset.name}...`);
+        console.log(`Updater: URL do asset: ${zipAsset.url}`);
         
-        // Baixar o arquivo com autenticação
-        const zipResponse = await fetch(zipAsset.url, {
+        // Baixar o arquivo com autenticação usando a API de assets
+        // A URL do asset já vem da API e aponta para o endpoint correto
+        const zipResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/assets/${zipAsset.id}`, {
           headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Authorization': `token ${GITHUB_TOKEN}`,
             'Accept': 'application/octet-stream',
             'User-Agent': 'Veiculos-App'
           }
         });
         
         if (!zipResponse.ok) {
-          console.log(`Updater: Erro ao baixar ZIP: ${zipResponse.status}`);
+          console.log(`Updater: Erro ao baixar ZIP: ${zipResponse.status} ${zipResponse.statusText}`);
           return;
         }
         
+        console.log(`Updater: ZIP baixado com sucesso, processando...`);
+        
         // Converter para blob e depois para base64
         const blob = await zipResponse.blob();
+        console.log(`Updater: Blob size: ${blob.size} bytes`);
+        
         const base64 = await blobToBase64(blob);
         
         // Salvar arquivo temporariamente
@@ -135,7 +141,7 @@ export async function checkForUpdate() {
   try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers: {
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Authorization': `token ${GITHUB_TOKEN}`,
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'Veiculos-App'
       }
