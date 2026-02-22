@@ -2,11 +2,11 @@ name: Create Release
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
-      - 'public/dados.xlsx'
       - 'src/**'
       - 'package.json'
+      - '.env.example'
   workflow_dispatch:
     inputs:
       version:
