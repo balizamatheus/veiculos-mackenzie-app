@@ -1,29 +1,78 @@
-# Sistema de Atualizações Automáticas (Repositório Privado)
+# Sistema de Atualizações Automáticas
 
-Este projeto está configurado com **Capacitor Updater** + **GitHub Releases** + **Personal Access Token** para permitir atualizações automáticas com repositório privado.
+Este projeto está configurado com:
+- **Capacitor Updater** para atualizações automáticas do app
+- **Google Drive** para hospedar os dados do Excel (protegidos)
+- **Repositório público** para permitir atualizações sem CORS
 
-## Configuração do Token
+## Como Funciona
 
-### 1. Criar Personal Access Token no GitHub
+```
+┌─────────────────────────────────────────────────────────────┐
+│  GitHub (Repositório Público)                                │
+│  - Código do app                                             │
+│  - SEM o arquivo .env                                        │
+│  - SEM o dados.xlsx                                          │
+│  - Atualizações automáticas funcionam                       │
+└─────────────────────────────────────────────────────────────┘
 
-1. Acesse: https://github.com/settings/tokens
-2. Clique em **"Generate new token"** → **"Generate new token (classic)"**
-3. Configure:
-   - **Note:** `Veiculos App Updater`
-   - **Expiration:** `No expiration` (ou o tempo que preferir)
-   - **Scopes:** Marque apenas `repo` (para repositório privado)
-4. Clique em **"Generate token"**
-5. **COPIE O TOKEN** (só aparece uma vez!)
+┌─────────────────────────────────────────────────────────────┐
+│  Seu Computador                                              │
+│  - Arquivo .env com link do Google Drive                    │
+│  - Não é enviado para o GitHub (está no .gitignore)         │
+└─────────────────────────────────────────────────────────────┘
 
-### 2. Adicionar o Token no Código
+┌─────────────────────────────────────────────────────────────┐
+│  APK Gerado                                                  │
+│  - Contém o link do Google Drive embutido                   │
+│  - Quem tem o APK consegue acessar os dados                 │
+└─────────────────────────────────────────────────────────────┘
 
-Edite o arquivo [`src/utils/updater.js`](src/utils/updater.js) e substitua `SEU_TOKEN_AQUI` pelo seu token:
-
-```javascript
-const GITHUB_TOKEN = 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+┌─────────────────────────────────────────────────────────────┐
+│  Google Drive                                                │
+│  - Arquivo dados.xlsx                                        │
+│  - Acessível pelo link                                       │
+│  - Você atualiza quando quiser                               │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Build e Deploy
+---
+
+## Configuração Inicial
+
+### 1. Configurar Google Drive
+
+1. Faça upload do arquivo `dados.xlsx` no Google Drive
+2. Clique com botão direito → **Compartilhar**
+3. Clique em **"Mudar para qualquer pessoa com o link"**
+4. Copie o link (será algo como: `https://drive.google.com/file/d/XXXXX/view`)
+5. Extraia o ID do arquivo (o `XXXXX` na URL)
+6. A URL para download direto será:
+   ```
+   https://drive.google.com/uc?export=download&id=SEU_FILE_ID
+   ```
+
+### 2. Criar arquivo .env
+
+Crie um arquivo `.env` na raiz do projeto:
+
+```env
+VITE_EXCEL_URL=https://drive.google.com/uc?export=download&id=SEU_FILE_ID
+```
+
+### 3. Remover dados.xlsx do repositório
+
+```bash
+git rm public/dados.xlsx
+git commit -m "Remover dados.xlsx - agora usa Google Drive"
+```
+
+### 4. Tornar repositório público
+
+1. Acesse as configurações do repositório no GitHub
+2. "Danger Zone" → "Change visibility" → "Make public"
+
+### 5. Build e gerar APK
 
 ```bash
 npm run android
@@ -33,78 +82,56 @@ Depois gere o APK no Android Studio.
 
 ---
 
-## Como Funciona
+## Como Atualizar os Dados
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  App no Celular                                              │
-│                                                              │
-│  1. Faz requisição para GitHub API                          │
-│  2. Inclui token de autenticação                            │
-│  3. GitHub retorna dados da release                         │
-│  4. App baixa e aplica atualização                          │
-└─────────────────────────────────────────────────────────────┘
-```
+### Atualizar dados do Excel:
+
+1. Edite o arquivo `dados.xlsx` no seu computador
+2. Faça upload da nova versão no Google Drive (substitua o arquivo)
+3. Pronto! Os usuários terão os dados atualizados na próxima abertura do app
+
+### Atualizar o app (código, design, etc.):
+
+1. Faça as alterações no código
+2. Incremente a versão no `package.json`
+3. Commit e push para o GitHub
+4. O GitHub Actions criará uma release automaticamente
+5. Os usuários receberão a atualização automaticamente
 
 ---
 
 ## Segurança
 
-### O que o token permite:
-- ✅ Ler releases do repositório
-- ✅ Baixar arquivos das releases
+### O que está protegido:
+- ✅ Link do Google Drive não fica no GitHub
+- ✅ Dados não são indexados por buscadores
+- ✅ Só quem tem o APK consegue acessar (indiretamente)
 
-### O que o token NÃO permite:
-- ❌ Modificar código
-- ❌ Criar releases
-- ❌ Alterar configurações
-
-### Aviso importante:
-O token fica embutido no APK. Qualquer pessoa com conhecimento técnico pode extrair o token do APK. Isso oferece proteção contra acesso casual, mas não contra atacantes determinados.
+### Limitações:
+- ⚠️ O link fica embutido no APK
+- ⚠️ Alguém com conhecimento técnico pode extrair o link
 
 ---
 
-## Fluxo de Atualização
+## Arquivos Importantes
 
-### Quando você quiser atualizar:
-
-1. **Atualize o arquivo** `public/dados.xlsx`
-2. **Atualize a versão** no `package.json`:
-   ```json
-   "version": "1.0.3"  // Incremente a versão
-   ```
-3. **Faça commit e push:**
-   ```bash
-   git add .
-   git commit -m "Atualizar dados para v1.0.3"
-   git push
-   ```
-
-4. O GitHub Actions criará automaticamente uma Release
-5. Os usuários receberão a atualização automaticamente
+| Arquivo | Descrição |
+|---------|-----------|
+| [`.env.example`](.env.example) | Modelo do arquivo de ambiente |
+| [`.gitignore`](.gitignore) | Garante que .env não vai para o GitHub |
+| [`src/App.jsx`](src/App.jsx) | Carrega dados da URL configurada |
+| [`src/utils/updater.js`](src/utils/updater.js) | Sistema de atualização automática |
 
 ---
 
 ## Troubleshooting
 
-### Erro 401 (Unauthorized)
-- Verifique se o token está correto
-- Verifique se o token tem permissão `repo`
+### Dados não carregam
+- Verifique se o link do Google Drive está correto
+- Verifique se o arquivo está compartilhado como "Qualquer pessoa com o link"
+- Verifique os logs no console
 
-### Erro 404 (Not Found)
-- Verifique se o nome do repositório está correto
-- Verifique se a release existe
-
-### App não atualiza
-- Verifique os logs no Logcat (filtre por "Updater")
-- Verifique se a versão da release é maior que a do app
-
----
-
-## Arquivos do Sistema
-
-| Arquivo | Descrição |
-|---------|-----------|
-| [`src/utils/updater.js`](src/utils/updater.js) | Código de atualização com token |
-| [`.github/workflows/create-release.yml`](.github/workflows/create-release.yml) | Cria releases automaticamente |
-| [`capacitor.config.json`](capacitor.config.json) | Configuração do Capacitor |
+### Atualização do app não funciona
+- Verifique se o repositório é público
+- Verifique se a release foi criada no GitHub
+- Verifique os logs no Logcat filtrando por "Updater"

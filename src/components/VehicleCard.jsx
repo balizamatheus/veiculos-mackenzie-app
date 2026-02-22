@@ -14,24 +14,32 @@ import { twMerge } from 'tailwind-merge';
 
 const cn = (...inputs) => twMerge(clsx(inputs));
 
+// Função auxiliar para converter qualquer valor para string de forma segura
+const safeString = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value);
+};
+
 // Componente para destacar texto
 const HighlightText = ({ text, highlight, shouldHighlight = true, exactMatch = false }) => {
-  if (!shouldHighlight || !highlight || !text) return text;
+  // Garante que text seja string
+  const safeText = safeString(text);
+  if (!shouldHighlight || !highlight || !safeText) return safeText;
   
-  const textLower = text.toLowerCase();
+  const textLower = safeText.toLowerCase();
   const highlightLower = highlight.toLowerCase();
   
   // Se for busca exata, só destaca se for exatamente igual
   if (exactMatch) {
     if (textLower === highlightLower) {
-      return <mark className="bg-yellow-200 text-slate-900 rounded px-0.5">{text}</mark>;
+      return <mark className="bg-yellow-200 text-slate-900 rounded px-0.5">{safeText}</mark>;
     }
-    return text;
+    return safeText;
   }
   
   // Busca parcial - destaca onde encontrar
   const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
+  const parts = safeText.split(regex);
   
   return (
     <>

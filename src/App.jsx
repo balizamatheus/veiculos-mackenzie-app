@@ -9,18 +9,27 @@ import {
   RefreshCw,
   Loader2,
   Hash,
-  Target
+  Target,
+  Wifi,
+  WifiOff,
+  CloudOff,
+  Zap
 } from 'lucide-react';
 import VehicleCard from './components/VehicleCard';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as XLSX from 'xlsx';
 import { initUpdater } from './utils/updater';
+import { saveToCache, loadFromCache, getCacheInfo } from './utils/cache';
+import { loadDataWithFallback } from './utils/googleSheets';
 
 const cn = (...inputs) => twMerge(clsx(inputs));
 
-// URL do arquivo Excel local
-const LOCAL_EXCEL_URL = '/dados.xlsx';
+// Função auxiliar para converter qualquer valor para string de forma segura
+const safeString = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value);
+};
 
 // Hook de debounce para otimizar busca
 function useDebounce(value, delay) {
@@ -44,6 +53,10 @@ function App() {
   const [error, setError] = useState(null);
   const [searchMode, setSearchMode] = useState('all'); // 'all' ou 'adesivo'
   const [exactMatch, setExactMatch] = useState(false); // busca exata
+  const [isOnline, setIsOnlineState] = useState(navigator.onLine);
+  const [isUsingCache, setIsUsingCache] = useState(false);
+  const [dataSource, setDataSource] = useState(null); // 'json', 'excel', ou 'cache'
+  const [cacheInfo, setCacheInfo] = useState(null);
   
   // Debounce da busca para melhor performance
   const debouncedSearch = useDebounce(searchQuery, 200);
@@ -56,40 +69,83 @@ function App() {
     initUpdater();
   }, []);
 
-  // Carregar dados do arquivo local
-  const loadFromLocal = useCallback(async () => {
-    setIsLoading(true);
+  // Monitorar status de conexão
+  useEffect(() => {
+    const handleOnline = () => setIsOnlineState(true);
+    const handleOffline = () => setIsOnlineState(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Carregar dados - mostra cache primeiro, depois atualiza em background
+  const loadFromLocal = useCallback(async (forceRefresh = false) => {
+    // Atualiza info do cache
+    const info = getCacheInfo();
+    setCacheInfo(info);
+    
+    // 1. PRIMEIRO: Mostra cache imediatamente (se existir)
+    const cachedData = loadFromCache();
+    if (cachedData && cachedData.length > 0) {
+      setVehicles(cachedData);
+      setIsUsingCache(true);
+      setDataSource('cache');
+      setError(null);
+      console.log('Cache carregado imediatamente:', cachedData.length, 'registros');
+    }
+    
+    // 2. Se estiver offline, não tenta atualizar
+    if (!navigator.onLine) {
+      console.log('Offline - usando apenas cache');
+      if (!cachedData) {
+        setError('Sem conexão e sem dados em cache. Conecte-se à internet.');
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    // 3. Se não tem cache, mostra loading
+    if (!cachedData || cachedData.length === 0) {
+      setIsLoading(true);
+    }
+    
     setError(null);
     
+    // 4. Tenta atualizar dados em background
     try {
-      const response = await fetch(LOCAL_EXCEL_URL);
+      console.log('Atualizando dados em background...');
+      const { data, source } = await loadDataWithFallback(XLSX);
       
-      if (!response.ok) {
-        throw new Error('Arquivo não encontrado.');
+      if (data.length === 0) {
+        throw new Error('Os dados estão vazios');
       }
       
-      const arrayBuffer = await response.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      // Salva no cache para uso offline
+      saveToCache(data);
+      setCacheInfo(getCacheInfo());
       
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-        raw: false,
-        defval: ''
-      });
-
-      if (jsonData.length === 0) {
-        throw new Error('O arquivo Excel está vazio');
-      }
-
-      setVehicles(jsonData);
+      setVehicles(data);
       setSearchQuery('');
       setError(null);
+      setDataSource(source);
+      setIsUsingCache(false);
+      console.log('Dados atualizados via', source);
       
     } catch (err) {
-      console.error('Erro ao carregar:', err);
-      setError('Arquivo não encontrado. Use o upload manual.');
+      console.error('Erro ao atualizar:', err);
+      
+      // Se falhou e tem cache, mantém o cache
+      if (cachedData && cachedData.length > 0) {
+        console.log('Mantendo cache devido a erro de atualização');
+        // Não mostra erro, continua com cache
+      } else {
+        setError('Não foi possível carregar os dados. Verifique sua conexão.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +166,7 @@ function App() {
       // Modo apenas adesivos
       if (searchMode === 'adesivo') {
         for (let i = 1; i <= 5; i++) {
-          const adesivo = (vehicle[`Adesivo${i}`] || '').toLowerCase().trim();
+          const adesivo = safeString(vehicle[`Adesivo${i}`]).toLowerCase().trim();
           if (exactMatch) {
             // Busca exata
             if (adesivo === query) return true;
@@ -125,7 +181,7 @@ function App() {
       // Modo todos os campos
       // Buscar em todas as placas
       for (let i = 1; i <= 5; i++) {
-        const placa = (vehicle[`Placa${i}`] || '').toLowerCase();
+        const placa = safeString(vehicle[`Placa${i}`]).toLowerCase();
         if (exactMatch) {
           if (placa === query) return true;
         } else {
@@ -135,7 +191,7 @@ function App() {
       
       // Buscar em todos os adesivos
       for (let i = 1; i <= 5; i++) {
-        const adesivo = (vehicle[`Adesivo${i}`] || '').toLowerCase();
+        const adesivo = safeString(vehicle[`Adesivo${i}`]).toLowerCase();
         if (exactMatch) {
           if (adesivo === query) return true;
         } else {
@@ -145,7 +201,7 @@ function App() {
       
       // Buscar em todos os alunos
       for (let i = 1; i <= 4; i++) {
-        const aluno = (vehicle[`Aluno${i}`] || '').toLowerCase();
+        const aluno = safeString(vehicle[`Aluno${i}`]).toLowerCase();
         if (exactMatch) {
           if (aluno === query) return true;
         } else {
@@ -154,9 +210,9 @@ function App() {
       }
       
       // Buscar nos responsáveis
-      const pai = (vehicle.Pai || '').toLowerCase();
-      const mae = (vehicle.Mãe || '').toLowerCase();
-      const identificacao = (vehicle.Identificação || '').toLowerCase();
+      const pai = safeString(vehicle.Pai).toLowerCase();
+      const mae = safeString(vehicle.Mãe).toLowerCase();
+      const identificacao = safeString(vehicle.Identificação).toLowerCase();
       
       if (exactMatch) {
         if (pai === query || mae === query || identificacao === query) return true;
@@ -165,10 +221,10 @@ function App() {
       }
       
       // Buscar em email e celular
-      const emailPai = (vehicle['Email Pai'] || '').toLowerCase();
-      const emailMae = (vehicle['Email Mãe'] || '').toLowerCase();
-      const celular = (vehicle.Celular || '').toLowerCase();
-      const telefoneResidencial = (vehicle['Telefone Residencial'] || '').toLowerCase();
+      const emailPai = safeString(vehicle['Email Pai']).toLowerCase();
+      const emailMae = safeString(vehicle['Email Mãe']).toLowerCase();
+      const celular = safeString(vehicle.Celular).toLowerCase();
+      const telefoneResidencial = safeString(vehicle['Telefone Residencial']).toLowerCase();
       
       if (exactMatch) {
         if (emailPai === query || emailMae === query || celular === query || telefoneResidencial === query) return true;
@@ -220,6 +276,47 @@ function App() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Status de conexão e fonte de dados */}
+              <div className={cn(
+                "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+                !isOnline 
+                  ? "bg-red-100 text-red-700"
+                  : dataSource === 'json'
+                    ? "bg-blue-100 text-blue-700"
+                    : dataSource === 'excel'
+                      ? "bg-amber-100 text-amber-700"
+                      : dataSource === 'cache'
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-green-100 text-green-700"
+              )}>
+                {!isOnline ? (
+                  <>
+                    <WifiOff className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Offline</span>
+                  </>
+                ) : dataSource === 'json' ? (
+                  <>
+                    <Zap className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Rápido</span>
+                  </>
+                ) : dataSource === 'excel' ? (
+                  <>
+                    <Database className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Excel</span>
+                  </>
+                ) : dataSource === 'cache' ? (
+                  <>
+                    <CloudOff className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Cache</span>
+                  </>
+                ) : (
+                  <>
+                    <Wifi className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Online</span>
+                  </>
+                )}
+              </div>
+              
               <button
                 onClick={loadFromLocal}
                 disabled={isLoading}
