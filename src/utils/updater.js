@@ -6,13 +6,22 @@ const GITHUB_REPO = 'balizamatheus/veiculos-mackenzie-app';
 
 /**
  * Verifica e aplica atualizações automaticamente
-    * Deve ser chamado no início do app
+     * Deve ser chamado no início do app
  */
 export async function initUpdater() {
   // Só funciona em apps nativos (Android/iOS)
   if (!Capacitor.isNativePlatform()) {
     console.log('Updater: Rodando em navegador, pulando verificação de atualização');
     return;
+  }
+
+  // IMPORTANTE: Notificar que o app carregou com sucesso IMEDIATAMENTE
+  // Isso deve ser chamado antes de qualquer operação assíncrona
+  try {
+    await CapacitorUpdater.notifyAppReady();
+    console.log('Updater: notifyAppReady chamado com sucesso');
+  } catch (error) {
+    console.error('Updater: Erro ao chamar notifyAppReady', error);
   }
 
   try {
@@ -50,18 +59,12 @@ export async function initUpdater() {
         // Aplicar a atualização
         await CapacitorUpdater.set({ id: downloaded.id });
         
-        // Importante: Notificar que o app carregou com sucesso
-        // Sem isso, o CapacitorUpdater faz rollback automático
-        await CapacitorUpdater.notifyAppReady();
-        
         console.log('Updater: Atualização aplicada com sucesso');
       } else {
         console.log('Updater: Nenhum arquivo ZIP encontrado na release');
       }
     } else {
       console.log('Updater: App já está na versão mais recente');
-      // Notificar que o app carregou com sucesso (importante para evitar rollback)
-      await CapacitorUpdater.notifyAppReady();
     }
   } catch (error) {
     console.error('Updater: Erro ao verificar atualização', error);
