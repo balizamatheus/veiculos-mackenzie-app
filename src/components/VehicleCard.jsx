@@ -62,7 +62,14 @@ const VehicleCard = memo(forwardRef(({ vehicle, searchQuery, searchMode, exactMa
   for (let i = 1; i <= 5; i++) {
     const placa = vehicle[`Placa${i}`];
     const adesivo = vehicle[`Adesivo${i}`];
-    const marcaModelo = vehicle[`Marca/Modelo${i}`];
+    // Tenta diferentes variações do nome da coluna
+    const marcaModelo = vehicle[`Marca/Modelo${i}`] || 
+                         vehicle[`Marca/Modelo ${i}`] ||
+                         vehicle[`MarcaModelo${i}`] ||
+                         vehicle[`Marca ${i}`] ||
+                         vehicle[`Modelo${i}`] ||
+                         vehicle[`Carro${i}`] ||
+                         vehicle[`Veículo${i}`];
     if (placa || adesivo) {
       veiculos.push({ placa, adesivo, marcaModelo });
     }

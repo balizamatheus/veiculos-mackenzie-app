@@ -125,6 +125,14 @@ function App() {
         throw new Error('Os dados estão vazios');
       }
       
+      // DEBUG: Log das chaves do primeiro veículo
+      if (data.length > 0) {
+        console.log('DEBUG - Chaves do primeiro veículo:', Object.keys(data[0]));
+        console.log('DEBUG - Campos Marca/Modelo:', Object.keys(data[0]).filter(k => 
+          k.toLowerCase().includes('marca') || k.toLowerCase().includes('modelo')
+        ));
+      }
+      
       // Salva no cache para uso offline
       saveToCache(data);
       setCacheInfo(getCacheInfo());
@@ -199,9 +207,18 @@ function App() {
         }
       }
       
-      // Buscar em todas as marcas/modelos
+      // Buscar em todas as marcas/modelos (suporta variações de nome de coluna)
       for (let i = 1; i <= 5; i++) {
-        const marcaModelo = safeString(vehicle[`Marca/Modelo${i}`]).toLowerCase();
+        // Tenta diferentes variações do nome da coluna
+        const marcaModelo = safeString(
+          vehicle[`Marca/Modelo${i}`] || 
+          vehicle[`Marca/Modelo ${i}`] ||
+          vehicle[`MarcaModelo${i}`] ||
+          vehicle[`Marca ${i}`] ||
+          vehicle[`Modelo${i}`] ||
+          vehicle[`Carro${i}`] ||
+          vehicle[`Veículo${i}`]
+        ).toLowerCase();
         if (exactMatch) {
           if (marcaModelo === query) return true;
         } else {

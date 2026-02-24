@@ -29,6 +29,12 @@ const parseGoogleVisualizationResponse = (responseText) => {
   // Extrai as colunas (cabeçalhos)
   const columns = data.table.cols.map(col => col.label || col.id);
   
+  // DEBUG: Log das colunas encontradas
+  console.log('DEBUG - Colunas encontradas no JSON:', columns);
+  console.log('DEBUG - Colunas que contêm "Marca" ou "Modelo":', columns.filter(c => 
+    c.toLowerCase().includes('marca') || c.toLowerCase().includes('modelo')
+  ));
+  
   // Extrai as linhas e converte para objetos
   const rows = data.table.rows.map(row => {
     const obj = {};
