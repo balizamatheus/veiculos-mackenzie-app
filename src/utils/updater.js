@@ -50,12 +50,18 @@ export async function initUpdater() {
         // Aplicar a atualização
         await CapacitorUpdater.set({ id: downloaded.id });
         
+        // Importante: Notificar que o app carregou com sucesso
+        // Sem isso, o CapacitorUpdater faz rollback automático
+        await CapacitorUpdater.notifyAppReady();
+        
         console.log('Updater: Atualização aplicada com sucesso');
       } else {
         console.log('Updater: Nenhum arquivo ZIP encontrado na release');
       }
     } else {
       console.log('Updater: App já está na versão mais recente');
+      // Notificar que o app carregou com sucesso (importante para evitar rollback)
+      await CapacitorUpdater.notifyAppReady();
     }
   } catch (error) {
     console.error('Updater: Erro ao verificar atualização', error);
