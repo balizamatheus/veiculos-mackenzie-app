@@ -199,6 +199,16 @@ function App() {
         }
       }
       
+      // Buscar em todas as marcas/modelos
+      for (let i = 1; i <= 5; i++) {
+        const marcaModelo = safeString(vehicle[`Marca/Modelo${i}`]).toLowerCase();
+        if (exactMatch) {
+          if (marcaModelo === query) return true;
+        } else {
+          if (marcaModelo.includes(query)) return true;
+        }
+      }
+      
       // Buscar em todos os alunos
       for (let i = 1; i <= 4; i++) {
         const aluno = safeString(vehicle[`Aluno${i}`]).toLowerCase();
@@ -342,7 +352,7 @@ function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={searchMode === 'adesivo' ? "Buscar por número do adesivo..." : "Buscar por placa, adesivo, nome, email ou celular..."}
+                  placeholder={searchMode === 'adesivo' ? "Buscar por número do adesivo..." : "Buscar por placa, adesivo, marca, modelo, nome, email ou celular..."}
                   className="input-search pl-12 pr-4"
                 />
                 {searchQuery && (

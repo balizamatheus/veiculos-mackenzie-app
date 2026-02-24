@@ -136,7 +136,14 @@ const VehicleCard = memo(forwardRef(({ vehicle, searchQuery, searchMode, exactMa
                   />
                 </p>
                 {v.marcaModelo && (
-                  <p className="text-xs text-slate-400">{v.marcaModelo}</p>
+                  <p className="text-xs text-slate-400">
+                    <HighlightText 
+                      text={v.marcaModelo} 
+                      highlight={searchQuery}
+                      shouldHighlight={!isAdesivoMode}
+                      exactMatch={exactMatch}
+                    />
+                  </p>
                 )}
               </div>
             </div>
