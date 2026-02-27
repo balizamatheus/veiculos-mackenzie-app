@@ -19,8 +19,6 @@ import VehicleCard from './components/VehicleCard';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as XLSX from 'xlsx';
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
-import { Capacitor } from '@capacitor/core';
 import { initUpdater } from './utils/updater';
 import { saveToCache, loadFromCache, getCacheInfo } from './utils/cache';
 import { loadDataWithFallback } from './utils/googleSheets';
@@ -28,7 +26,7 @@ import { loadDataWithFallback } from './utils/googleSheets';
 const cn = (...inputs) => twMerge(clsx(inputs));
 
 // Versão do app
-export const APP_VERSION = '1.2.3';
+export const APP_VERSION = '1.2.5';
 
 // Função auxiliar para converter qualquer valor para string de forma segura
 const safeString = (value) => {
@@ -62,7 +60,6 @@ function App() {
   const [isUsingCache, setIsUsingCache] = useState(false);
   const [dataSource, setDataSource] = useState(null); // 'json', 'excel', ou 'cache'
   const [cacheInfo, setCacheInfo] = useState(null);
-  const [appVersion, setAppVersion] = useState(APP_VERSION);
   
   // Debounce da busca para melhor performance
   const debouncedSearch = useDebounce(searchQuery, 200);
@@ -73,15 +70,6 @@ function App() {
   // Inicializar verificador de atualizações
   useEffect(() => {
     initUpdater();
-    
-    // Buscar versão real do Capacitor Updater (em apps nativos)
-    if (Capacitor.isNativePlatform()) {
-      CapacitorUpdater.current().then(result => {
-        if (result.version) {
-          setAppVersion(result.version);
-        }
-      }).catch(console.error);
-    }
   }, []);
 
   // Monitorar status de conexão
@@ -314,7 +302,7 @@ function App() {
                     : 'Nenhum cadastro'
                   }
                 </p>
-                <p className="text-[10px] text-slate-300">v{appVersion}</p>
+                <p className="text-[10px] text-slate-300">v{APP_VERSION}</p>
               </div>
             </div>
             
