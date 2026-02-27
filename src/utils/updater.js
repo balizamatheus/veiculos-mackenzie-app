@@ -1,8 +1,18 @@
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 
 // Configuração do Capacitor Updater
 const GITHUB_REPO = 'balizamatheus/veiculos-mackenzie-app';
+
+// URLs do ambiente (embutidas no APK)
+const ENV_JSON_URL = import.meta.env.VITE_JSON_URL;
+const ENV_EXCEL_URL = import.meta.env.VITE_EXCEL_URL;
+
+/**
+ * Salva as URLs do .env no Preferences ANTES de qualquer update
+ * Isso garante que após o update, o app ainda terá acesso às URLs
+ */
 
 /**
  * Verifica e aplica atualizações automaticamente
@@ -14,6 +24,34 @@ export async function initUpdater() {
     console.log('Updater: Rodando em navegador, pulando verificação de atualização');
     return;
   }
+
+  // ========== NOVO: Salvar URLs ANTES do update ==========
+  try {
+    if (ENV_JSON_URL || ENV_EXCEL_URL) {
+      console.log('Updater: Salvando URLs do .env no Preferences...');
+      
+      // Verificar se já estão salvas para evitar writing desnecessário
+      const savedJson = await Preferences.get({ key: 'config_json_url' });
+      const savedExcel = await Preferences.get({ key: 'config_excel_url' });
+      
+      if (!savedJson.value || savedJson.value !== ENV_JSON_URL) {
+        await Preferences.set({ key: 'config_json_url', value: ENV_JSON_URL || '' });
+        console.log('Updater: JSON_URL salva no Preferences');
+      }
+      
+      if (!savedExcel.value || savedExcel.value !== ENV_EXCEL_URL) {
+        await Preferences.set({ key: 'config_excel_url', value: ENV_EXCEL_URL || '' });
+        console.log('Updater: EXCEL_URL salva no Preferences');
+      }
+      
+      console.log('Updater: URLs do .env salvas no Preferences com sucesso');
+    } else {
+      console.log('Updater: Nenhuma URL encontrada no .env');
+    }
+  } catch (error) {
+    console.warn('Updater: Erro ao salvar URLs no Preferences:', error);
+  }
+  // =========================================================
 
   // IMPORTANTE: Notificar que o app carregou com sucesso IMEDIATAMENTE
   // Isso deve ser chamado antes de qualquer operação assíncrona
