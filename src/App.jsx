@@ -26,7 +26,7 @@ import { loadDataWithFallback } from './utils/googleSheets';
 const cn = (...inputs) => twMerge(clsx(inputs));
 
 // Versão do app
-export const APP_VERSION = '1.2.8';
+export const APP_VERSION = '1.2.9';
 
 // Função auxiliar para converter qualquer valor para string de forma segura
 const safeString = (value) => {

@@ -2,6 +2,9 @@ import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 
+// Versão do app (deve bater com App.jsx)
+import { APP_VERSION } from '../App';
+
 // Configuração do Capacitor Updater
 const GITHUB_REPO = 'balizamatheus/veiculos-mackenzie-app';
 
@@ -27,6 +30,13 @@ export async function initUpdater() {
 
   // ========== NOVO: Salvar URLs ANTES do update ==========
   try {
+    // Also save the current version if not already saved
+    const savedVersion = await Preferences.get({ key: 'app_version' });
+    if (!savedVersion.value) {
+      await Preferences.set({ key: 'app_version', value: APP_VERSION });
+      console.log('Updater: Versão inicial salva no Preferences:', APP_VERSION);
+    }
+    
     if (ENV_JSON_URL || ENV_EXCEL_URL) {
       console.log('Updater: Salvando URLs do .env no Preferences...');
       
@@ -97,6 +107,9 @@ export async function initUpdater() {
         // Aplicar a atualização
         await CapacitorUpdater.set({ id: downloaded.id });
         
+        // Salvar a versão no Preferences para evitar loop
+        await saveCurrentVersion(latestVersion);
+        
         console.log('Updater: Atualização aplicada com sucesso');
       } else {
         console.log('Updater: Nenhum arquivo ZIP encontrado na release');
@@ -141,13 +154,36 @@ export async function checkForUpdate() {
 
 /**
  * Obtém versão atual do app
+ * Agora lê do Preferences (onde salvamos após cada update)
+ * Isso evita o loop infinito de atualizações
  */
 async function getCurrentVersion() {
   try {
-    const current = await CapacitorUpdater.current();
-    return current.version || '1.0.0';
+    // Primeiro tenta ler do Preferences (versão salva do último update)
+    const savedVersion = await Preferences.get({ key: 'app_version' });
+    if (savedVersion.value) {
+      console.log('Updater: Versão lida do Preferences:', savedVersion.value);
+      return savedVersion.value;
+    }
+    
+    // Se não tem no Preferences, usa a versão do APP_VERSION
+    console.log('Updater: Nenhuma versão salva no Preferences, usando APP_VERSION');
+    return APP_VERSION;
   } catch {
-    return '1.0.0';
+    return APP_VERSION;
+  }
+}
+
+/**
+ * Salva a versão atual no Preferences
+ * Chamado após aplicar uma atualização
+ */
+async function saveCurrentVersion(version) {
+  try {
+    await Preferences.set({ key: 'app_version', value: version });
+    console.log('Updater: Versão salva no Preferences:', version);
+  } catch (error) {
+    console.warn('Updater: Erro ao salvar versão:', error);
   }
 }
 
